@@ -48,45 +48,58 @@ def obtener_datos_sheet(nombre_pestana):
         data = sh.worksheet(nombre_pestana).get_all_records()
         if not data: return "Sin datos."
         return pd.DataFrame(data).to_string(index=False)
-    except Exception:
+    except Exception as e:
+        print(f"❌ [ERROR LECTURA {nombre_pestana}]: {e}")
         return "Sin datos disponibles."
 
 def clasificar_intencion(mensaje):
+    print("📡 [DEBUG] -> Clasificando intención con Gemini...")
     prompt = f"""
     Clasifica el siguiente mensaje en UNA sola palabra: FAQ, HORARIO, RESERVA, AJENO u OTRO.
-    - FAQ: Trámites, plazos, casino, certificados, preguntas generales.
-    - HORARIO: SOLO disponibilidad de profesores, a qué hora atiende.
+    - FAQ: Trámites, plazos, casino, certificados, preguntas generales, y HORARIOS DE LUGARES (biblioteca, sede).
+    - HORARIO: ESTRICTAMENTE SOLO disponibilidad de PROFESORES O PERSONAS (ej. a qué hora atiende Luis). NUNCA lugares.
     - RESERVA: Agendar, tomar hora (INCLUYE envío de RUT o Nombre).
     - AJENO: Temas sin relación con la universidad.
     - OTRO: Saludos básicos.
     Mensaje: "{mensaje}"
     """
-    try: return model.generate_content(prompt).text.strip().upper()
-    except: return "ERROR_RED"
+    try: 
+        resultado = model.generate_content(prompt).text.strip().upper()
+        print(f"📡 [DEBUG] -> Intención detectada: {resultado}")
+        return resultado
+    except Exception as e: 
+        print(f"❌ [ERROR GEMINI CLASIFICADOR]: {e}")
+        return "ERROR_RED"
 
 def modulo_faq(mensaje):
+    print("📡 [DEBUG] -> Ejecutando módulo FAQ...")
     ctx_faq = obtener_datos_sheet("FAQ")
     prompt = f"Eres asistente de la Facultad. Responde usando SOLO esta información:\n{ctx_faq}\nREGLA: Si la respuesta no está, responde EXACTAMENTE: <NO_ENCONTRADO>\nPregunta: {mensaje}"
     respuesta = model.generate_content(prompt).text.strip()
     
     if "<NO_ENCONTRADO>" in respuesta:
         try:
+            print("📡 [DEBUG] -> Guardando pregunta pendiente en Sheets...")
             sh.worksheet("Preguntas_Pendientes").append_row([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), mensaje])
-        except: pass
+        except Exception as e: 
+            print(f"❌ [ERROR ESCRITURA SHEETS]: {e}")
         return "No tengo la respuesta oficial. He guardado tu pregunta para revisión."
     return respuesta
 
 def modulo_horarios(mensaje):
+    print("📡 [DEBUG] -> Ejecutando módulo HORARIOS...")
     ctx_horarios = obtener_datos_sheet("Horarios_Ocupados")
     ctx_directorio = obtener_datos_sheet("Directorio")
     prompt = f"Jornada L a V de 08:00 a 17:30. Ocupados: {ctx_horarios}. Directorio: {ctx_directorio}. Responde disponibilidad agrupada. Pregunta: {mensaje}"
     return model.generate_content(prompt).text.strip()
 
 def modulo_reservas(mensaje):
+    print("📡 [DEBUG] -> Ejecutando módulo RESERVAS. Leyendo contexto...")
     ctx_horarios = obtener_datos_sheet("Horarios_Ocupados")
     ctx_reservas = obtener_datos_sheet("Reservas")
     ctx_directorio = obtener_datos_sheet("Directorio")
     
+    print("📡 [DEBUG] -> Consultando lógica de reserva con Gemini...")
     prompt = f"""
     Eres asistente de reservas (L a V, 08:00 a 17:30). Ocupados: {ctx_horarios}. Alumnos agendados: {ctx_reservas}. Directorio: {ctx_directorio}
     REGLAS ESTRICTAS:
@@ -97,18 +110,22 @@ def modulo_reservas(mensaje):
     Mensaje: {mensaje}
     """
     respuesta_ia = model.generate_content(prompt).text.strip()
+    print("📡 [DEBUG] -> Gemini respondió a la reserva.")
 
     if "<AGENDAR:" in respuesta_ia:
         try:
+            print("📡 [DEBUG] -> Intentando escribir la reserva en Google Sheets...")
             inicio = respuesta_ia.find("<AGENDAR:") + 9
             fin = respuesta_ia.find(">", inicio)
             datos = [d.strip() for d in respuesta_ia[inicio:fin].split("|")]
             
             if len(datos) == 5:
                 sh.worksheet("Reservas").append_row(datos)
+                print("📡 [DEBUG] -> ¡Reserva escrita con éxito en Sheets!")
                 ticket = f"\n\n🎫 **TICKET CONFIRMADO**\n* **Alumno:** {datos[3]} ({datos[4]})\n* **Docente:** {datos[0]}\n* **Fecha:** {datos[1].capitalize()} a las {datos[2]} hrs"
                 return respuesta_ia[:respuesta_ia.find("<AGENDAR:")].strip() + ticket
-        except: pass
+        except Exception as e: 
+            print(f"❌ [ERROR AL GUARDAR RESERVA EN SHEETS]: {e}")
     return respuesta_ia
 
 # ==========================================

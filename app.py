@@ -5,6 +5,8 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 import google.generativeai as genai
+import qrcode
+from io import BytesIO
 
 # ==========================================
 # CONFIGURACIÓN DE LA PÁGINA
@@ -131,6 +133,21 @@ def modulo_reservas(mensaje):
 # ==========================================
 # INTERFAZ GRÁFICA (UI)
 # ==========================================
+
+# 1. BARRA LATERAL CON EL CÓDIGO QR
+with st.sidebar:
+    st.subheader("📱 Comparte este Asistente")
+    st.write("Escanea este código para usarlo en tu celular:")
+    
+    # Reemplaza esto con tu link real si es diferente
+    url_app = "https://asistente-facultad-ust-phy64glcydnx9v6q93sxqp.streamlit.app/" 
+    qr = qrcode.make(url_app)
+    img_buffer = BytesIO()
+    qr.save(img_buffer, format="PNG")
+    
+    st.image(img_buffer.getvalue())
+
+# 2. INICIALIZACIÓN DEL CHAT
 if "mensajes" not in st.session_state:
     st.session_state.mensajes = [{"role": "assistant", "content": "Hola, ¿en qué puedo ayudarte hoy?"}]
 

@@ -4,3 +4,4 @@ gspread
 google-auth
 google-generativeai
 qrcode
+pillow

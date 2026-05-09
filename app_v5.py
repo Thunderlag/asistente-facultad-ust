@@ -169,23 +169,40 @@ def procesar_mensaje_v5(mensaje, historial):
 # ==========================================
 # 6. INTERFAZ VISUAL BLINDADA (UI Lock)
 # ==========================================
+# Inicializamos la persistencia del acceso
+if "es_admin" not in st.session_state:
+    st.session_state.es_admin = False
+
 with st.sidebar:
     st.subheader("🔑 Acceso Administrativo")
-    password = st.text_input("Contraseña de Director", type="password")
     
-    clave_correcta = st.secrets.get("admin_password")
-    es_admin = bool(password) and (password == clave_correcta) # <--- EL CANDADO CERRADO
+    # Widget de entrada de texto
+    password_input = st.text_input("Contraseña de Director", type="password", key="admin_pass_widget")
     
-    if es_admin: st.success("Modo Admin Activo")
-    else: st.info("Ingresa clave para estadísticas.")
+    # BOTÓN DE INGRESO (Tu requerimiento)
+    if st.button("Validar Acceso"):
+        clave_secreta = st.secrets.get("admin_password", "NO_CONFIGURADA")
+        if password_input == clave_secreta and password_input != "":
+            st.session_state.es_admin = True
+            st.success("Acceso Correcto")
+            st.rerun() 
+        else:
+            st.error("Clave inválida")
+
+    # Botón para cerrar sesión si ya estás dentro
+    if st.session_state.es_admin:
+        if st.button("Cerrar Sesión"):
+            st.session_state.es_admin = False
+            st.rerun()
 
     st.divider()
     st.subheader("📱 Compartir Asistente")
-    url_app = "[https://asistente-facultad-ust-phy64glcydnx9v6q93sxqp.streamlit.app/](https://asistente-facultad-ust-phy64glcydnx9v6q93sxqp.streamlit.app/)" # <-- LÍNEA CORREGIDA
+    # Nota: He quitado el formato Markdown de la URL para evitar errores en el QR
+    url_app = "https://asistente-facultad-ust-phy64glcydnx9v6q93sxqp.streamlit.app/" 
     qr = qrcode.make(url_app)
     img_buffer = BytesIO()
     qr.save(img_buffer, format="PNG")
-    st.image(img_buffer.getvalue(), width="stretch")
+    st.image(img_buffer.getvalue(), width=200)
 
     st.divider()
     st.subheader("🔄 Control")
@@ -193,12 +210,8 @@ with st.sidebar:
         st.session_state.mensajes = [{"role": "assistant", "content": "Hola, ¿en qué te puedo ayudar?"}]
         st.rerun()
 
-if es_admin:
-    st.title("📊 Dashboard de Gestión UST")
-    st.markdown("Métricas en vivo de uso y consultas de los estudiantes.")
-else:
-    st.title("🤖 Asistente Virtual UST")
-    st.markdown("Consulta horarios, trámites de secretaría o agenda citas con los docentes.")
+# Definimos la variable global basada en la sesión para el resto del código
+es_admin = st.session_state.es_admin
 
 # ==========================================
 # 7. RENDERIZADO (DASHBOARD vs CHAT)

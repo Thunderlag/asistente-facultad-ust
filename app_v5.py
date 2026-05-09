@@ -171,7 +171,9 @@ def procesar_mensaje_v5(mensaje, historial):
 with st.sidebar:
     st.subheader("🔑 Acceso Administrativo")
     password = st.text_input("Contraseña de Director", type="password")
-    es_admin = (password == st.secrets.get("admin_password", ""))
+    
+    clave_correcta = st.secrets.get("admin_password")
+    es_admin = bool(password) and (password == clave_correcta) # <--- EL CANDADO CERRADO
     
     if es_admin: st.success("Modo Admin Activo")
     else: st.info("Ingresa clave para estadísticas.")

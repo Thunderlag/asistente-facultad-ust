@@ -162,8 +162,6 @@ def procesar_mensaje_v5(mensaje, historial):
         print(f"❌ Error Formato JSON: {e} -> Recibido: {respuesta_ia.text}")
         return "ERROR_FORMATO", "Tuve un pequeño cruce de cables con el servidor. ¿Me repites la pregunta?"
     except Exception as e:
-        print(f"❌ Error de red o cuota: {e}")
-        return "ERROR_RED", "⚠️ El sistema está recibiendo muchas consultas. Por favor, dame 30 segundos y vuelve a intentarlo."
         #EXTRA PARA DEPURACION
         print(f"❌ Error de red o cuota: {e}")
         return "ERROR_RED", f"⚠️ MODO DEBUG - Error de Google: {str(e)}"
